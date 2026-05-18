@@ -278,6 +278,17 @@ body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--tm);mi
   .stats-banner{grid-template-columns:repeat(3,1fr);gap:4px;}
   .stat-chip{padding:10px 6px;}
 }
+
+/* 수정 모달 */
+.modal-overlay{position:fixed;inset:0;background:rgba(74,63,53,.5);display:flex;align-items:flex-end;justify-content:center;z-index:500;backdrop-filter:blur(4px);animation:fadeIn .2s ease;}
+.modal-box{background:var(--white);border-radius:28px 28px 0 0;padding:24px 20px 40px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+.modal-title{font-family:'Jua',sans-serif;font-size:20px;color:var(--tm);}
+.modal-close{background:var(--bg);border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.modal-close:hover{background:var(--border);}
+.edit-btn{background:var(--bg);color:#749CFF;border:1.5px solid #D5E0FF;border-radius:9px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0;}
+.edit-btn:hover{background:#EEF2FF;border-color:#749CFF;}
 </style>
 </head>
 <body>
@@ -298,7 +309,7 @@ body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--tm);mi
   <div class="hero">
     <span class="hero-mascot">👑</span>
     <div class="hero-title">리틀원주방</div>
-    <div class="hero-sub">현명하게 소비하고, 전원주 따라잡자! 💸</div>
+    <div class="hero-sub">현명하게 소비하고, 전원주 따라잡기! 💸</div>
   </div>
   <div class="container">
     <div class="stats-banner" id="statsBanner"></div>
@@ -913,6 +924,53 @@ function changePw(){
   showToast('🔒 비밀번호가 변경됐어요!','success');
 }
 
+
+// 수정 모달
+function openEditModal(fireKey) {
+  var item = allData.find(function(d){ return d.fireKey === fireKey; });
+  if (!item) return;
+  document.getElementById('editFireKey').value = fireKey;
+  document.getElementById('editDate').value = item.date;
+  document.getElementById('editEndDate').value = item.endDate || item.date;
+  document.getElementById('editTitle').value = item.title;
+  document.getElementById('editLink').value = item.link || '';
+  document.getElementById('editDesc').value = item.desc || '';
+  document.getElementById('editModal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function submitEdit() {
+  var fireKey = document.getElementById('editFireKey').value;
+  var date = document.getElementById('editDate').value;
+  var endDate = document.getElementById('editEndDate').value || date;
+  var title = document.getElementById('editTitle').value.trim();
+  var link = document.getElementById('editLink').value.trim();
+  var desc = document.getElementById('editDesc').value.trim();
+  if (!date) { showToast('📅 시작일을 선택해주세요!', 'error'); return; }
+  if (endDate < date) { showToast('⚠️ 종료일이 시작일보다 빠를 수 없어요!', 'error'); return; }
+  if (!title) { showToast('✏️ 할인명을 입력해주세요!', 'error'); return; }
+  var btn = document.getElementById('editSubmitBtn');
+  btn.disabled = true; btn.textContent = '수정 중... ⏳';
+  try {
+    var payload = { date: date, endDate: endDate, title: title, desc: desc };
+    if (link) payload.link = link;
+    var res = await fetch(FIREBASE_URL + '/discounts/' + fireKey + '.json', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error();
+    await fetchData(); renderAll();
+    closeEditModal();
+    showToast('✅ 수정 완료!', 'success');
+  } catch(e) { showToast('❌ 수정에 실패했어요', 'error'); }
+  finally { btn.disabled = false; btn.textContent = '수정 완료 ✨'; }
+}
 function showToast(msg,type){
   var t=document.getElementById('toast');
   t.textContent=msg;t.className='toast show '+(type||'');
@@ -943,5 +1001,41 @@ document.getElementById('inputDate').addEventListener('change',function(){
 updateNotifyBtn();
 fetchData().then(function(){renderUser();renderCalendar();renderArchive();});
 </script>
+
+<!-- 수정 모달 -->
+<div id="editModal" style="display:none">
+  <div class="modal-overlay" onclick="closeEditModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">✏️ 혜택 수정하기</div>
+        <button class="modal-close" onclick="closeEditModal()">✕</button>
+      </div>
+      <input type="hidden" id="editFireKey">
+      <div class="form-row" style="margin-bottom:15px">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">시작일</label>
+          <input type="date" class="form-input" id="editDate">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">종료일</label>
+          <input type="date" class="form-input" id="editEndDate">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">할인명</label>
+        <input type="text" class="form-input" id="editTitle" placeholder="예: 스타벅스 반값 데이 ☕">
+      </div>
+      <div class="form-group">
+        <label class="form-label">할인 링크 (선택)</label>
+        <input type="url" class="form-input" id="editLink" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">상세 내용 (선택)</label>
+        <textarea class="form-textarea" id="editDesc" placeholder="예: 앱 결제 시 전 메뉴 50% 할인!"></textarea>
+      </div>
+      <button class="submit-btn" id="editSubmitBtn" onclick="submitEdit()" style="background:linear-gradient(135deg,#749CFF,#5A81FA);box-shadow:0 6px 20px rgba(116,156,255,.3)">수정 완료 ✨</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
