@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -405,36 +406,12 @@ body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--tm);mi
           <input type="date" class="form-input" id="inputEndDate">
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">카테고리</label>
-        <select class="form-select" id="inputCategory">
-          <option value="">카테고리 선택</option>
-          <option value="식품">🍔 식품</option>
-          <option value="뷰티">💄 뷰티</option>
-          <option value="패션">👗 패션</option>
-          <option value="여행">✈️ 여행</option>
-          <option value="생활">🏠 생활</option>
-          <option value="전자">📱 전자</option>
-          <option value="기타">🎁 기타</option>
-        </select>
-      </div>
+
       <div class="form-group">
         <label class="form-label">할인명</label>
         <input type="text" class="form-input" id="inputTitle" placeholder="예: 스타벅스 반값 데이 ☕">
       </div>
-      <div class="form-group">
-        <label class="form-label">할인율/혜택</label>
-        <div class="discount-input-row">
-          <input type="text" class="form-input" id="inputDiscount" placeholder="예: 30">
-          <select class="form-select discount-type-select" id="inputDiscountType">
-            <option value="%">% 할인</option>
-            <option value="원">원 할인</option>
-            <option value="1+1">1+1</option>
-            <option value="무료배송">무료배송</option>
-            <option value="기타">기타</option>
-          </select>
-        </div>
-      </div>
+
       <div class="form-group">
         <label class="form-label">할인 링크 (선택)</label>
         <input type="url" class="form-input" id="inputLink" placeholder="https://...">
@@ -854,10 +831,7 @@ function renderAdmin() {
 async function addDiscount() {
   var date=document.getElementById('inputDate').value;
   var endDate=document.getElementById('inputEndDate').value||date;
-  var category=document.getElementById('inputCategory').value;
   var title=document.getElementById('inputTitle').value.trim();
-  var discount=document.getElementById('inputDiscount').value.trim();
-  var discountType=document.getElementById('inputDiscountType').value;
   var link=document.getElementById('inputLink').value.trim();
   var desc=document.getElementById('inputDesc').value.trim();
   if (!date){showToast('📅 시작일을 선택해주세요!','error');return;}
@@ -867,14 +841,11 @@ async function addDiscount() {
   btn.disabled=true;btn.textContent='저장 중... ⏳';
   try {
     var payload={date:date,endDate:endDate,title:title,desc:desc};
-    if (category) payload.category=category;
-    if (discount) {payload.discount=discount;payload.discountType=discountType;}
     if (link) payload.link=link;
     var res=await fetch(FIREBASE_URL+'/discounts.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if (!res.ok) throw new Error();
-    ['inputDate','inputEndDate','inputTitle','inputDiscount','inputLink','inputDesc'].forEach(function(id){document.getElementById(id).value=id.includes('Date')?getToday():'';});
-    document.getElementById('inputCategory').value='';
-    document.getElementById('inputDiscountType').value='%';
+    ['inputDate','inputEndDate','inputTitle','inputLink','inputDesc'].forEach(function(id){document.getElementById(id).value=id.includes('Date')?getToday():'';});
+
     await fetchData();renderAll();
     showToast('🎉 금고에 저장 완료!','success');
   } catch(e){showToast('❌ 등록에 실패했어요','error');}
